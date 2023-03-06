@@ -2,6 +2,7 @@ import numpy as np
 from numbers import Number
 from typing import Union, Any
 import math
+import copy
 
 class Point():
     def __init__(self, x, y) -> None:
@@ -236,6 +237,7 @@ class Circle():
         self.vel = Vector(vx, vy)
         self.forces = []
         self.rot = 0
+        self.vel_lines = []
     
     @property
     def x(self):
@@ -278,7 +280,7 @@ class Circle():
     
     def movement_dir(self, timestep) -> Line:
         return Line(self.pos, self.next_pos(timestep))
-
+    
     def line_collision(self, line: Line, timestep: Number, movement_dir: Line):
         # check if collision is possible
         # https://ericleong.me/research/circle-line/
@@ -333,7 +335,6 @@ class Circle():
 
         else:
             # edge intersection
-            print('edge')
             # calculate what endpoint the circle collided with 
             if p_c.distance(line.p1) < p_c.distance(line.p2):
                 endpoint = line.p1
@@ -352,10 +353,8 @@ class Circle():
 
         # 
         movement_dir_left_over_length = movement_dir.p2.distance(collision_point)
-        new_pos = collision_point + movement_dir_left_over_length * new_vel * timestep
-        left_over_dir = Line(collision_point, new_pos)
         
-        return (True, new_vel, new_pos, left_over_dir)
+        return (True, new_vel, collision_point, movement_dir_left_over_length)
     
                 
 
@@ -372,8 +371,18 @@ class PhysicsEnvironment():
         self.objects :list[PhysicsObject, Circle, Line] = objects
         self.lines : list[Line] = lines
         self.lines += [Line([0,0], [sizex, 0]), Line([sizex, 0], [sizex, sizey]), Line([sizex, sizey], [0, sizey]), Line([0, sizey], [0, 0]), ]
-
+        self.max_collision_per_tick = 6
+        
     def run_tick(self, timestep=1):
+
+        for obj in self.objects:
+            obj.forces.append([0, -1])
+            obj.apply_forces(timestep)
+            obj.apply_velocity(timestep)
+            obj.forces = []
+            
+        for circle in self.objects:
+            circle.vel_lines = []
         
         collision_solver_dict = {}
         for i in range(len(self.objects)):
@@ -400,26 +409,39 @@ class PhysicsEnvironment():
                         # add forces
                         circle.forces.append(u1)
                         circle2.forces.append(u2)
-                        
-                        
-            for line in self.lines:
-                movement_dir = circle.movement_dir(timestep)
-                collided, new_vel, pos, left_over_dir = circle.line_collision(line, timestep, movement_dir)
-                index = 0
-                while collided == True:
-                    circle.vel = new_vel * (self.collision_efficiency /  100)
-                    circle.pos = pos
-                    collided, new_vel, pos, left_over_dir = circle.line_collision(line, timestep, left_over_dir)
-                    index +=1
-                    if index == 2:
-                        print('hi')
+            
+
+            # real 
+            is_colliding = True
+            i=0
+            sim_circle = copy.deepcopy(circle)
+            
+            left_over_dir = sim_circle.movement_dir(timestep)
+            while is_colliding and i < 20:
+                
+                intersection_lines = []
+                for line in self.lines:
+                    collided, new_vel, collision_point, left_over_dir_length  = sim_circle.line_collision(line, timestep, left_over_dir)
+                    if collided:
+                        intersection_lines.append({'line': line,'new_vel': new_vel, 'collision_point': collision_point, 'left_over_dir_length': left_over_dir_length})
+
+                if len(intersection_lines) > 0:
+                    first_collision = sorted(intersection_lines,key=lambda x: x['left_over_dir_length'], reverse=True)[0]
+                    new_pos = first_collision['collision_point'] + first_collision['left_over_dir_length'] * first_collision['new_vel'].unit_vector * timestep
+
+                    left_over_dir = Line(first_collision['collision_point'], new_pos)
+                    
+                    sim_circle.vel = first_collision['new_vel']
+                    sim_circle.pos = first_collision['collision_point']
+                    i+=1
+                else:
+                    is_colliding = False
+            
+            circle.vel = sim_circle.vel
+            circle.pos = sim_circle.pos
 
 
-        for obj in self.objects:
-            obj.forces.append([0, -1])
-            obj.apply_forces(timestep)
-            obj.apply_velocity(timestep)
-            obj.forces = []
+
     
     
 
