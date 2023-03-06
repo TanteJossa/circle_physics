@@ -12,6 +12,10 @@ class Point():
     
     def __getitem__(self, index):
         return self.pos[index]
+    def __setitem__(self, index, val):
+        self.pos[index] = val
+    def __len__(self):
+        return 2  
     
     def distance(self, p: 'Point'):
         return np.abs(np.hypot(p.x - self.x, p.y - self.y))
@@ -29,39 +33,93 @@ class Point():
     @y.setter
     def y(self, y):
         self.pos[1] = y
+    
 
     def __repr__(self) :
         return f"Point({self.x}, {self.y})"
     
+    def format_math_other(self, other) -> list:
+        if not hasattr(other,'__len__'):
+            other = [other, other]
+        return other   
     def __add__(self, other) -> 'Point':
+        other = self.format_math_other(other)
         return Point(self.x + other[0], self.y + other[1])
     def __radd__(self, other) -> 'Point':
-        return self + [other, other]
+        other = self.format_math_other(other)
+        return self + other
     
     def __sub__(self, other) -> 'Point':
+        other = self.format_math_other(other)
         return Point(self.x - other[0], self.y - other[1])
     def __rsub__(self, other) -> 'Point':
-        other = float(other)
-        return self - [other, other]
+        other = self.format_math_other(other)
+        return self - other
     
     def __mul__(self, other) -> 'Point':
+        other = self.format_math_other(other)
         return Point(self.x * other[0], self.y * other[1])
     def __rmul__(self, other) -> 'Point':
-        other = float(other)
-        return self * [other, other]
+        other = self.format_math_other(other)
+        return self * other
     
     def __truediv__(self, other) -> 'Point':
-        return Point(self.x / other, self.y / other)
+        other = self.format_math_other(other)
+        return Point(self.x / other[0], self.y / other[0])
     def __rdiv__(self, other) -> 'Point':
-        return self / [other, other]
+        other = self.format_math_other(other)
+        return self / other
 
 class Vector():
-    def __init__(self, x: Number, y: Number) -> None:
-
+    def __init__(self, x: Number | Point, y: Number=0) -> None:
+        if type(x) == Point:     
+            y = x[1]
+            x = x[0]
+        if type(x) == Line and type(y) == Line:     
+            y = y[1] - x[1]
+            x = y[0] - x[0]
         self.value = np.array([x, y])
 
     def __repr__(self):
         return f"Vector({self.x}, {self.y})"
+    def __getitem__(self, index):
+        return self.value[index]
+    def __setitem__(self, index, val):
+        self.value[index] = val
+    def __len__(self):
+        return 2    
+    def format_math_other(self, other) -> list:
+        if not hasattr(other,'__len__'):
+            other = [other, other]
+        return other    
+    def __add__(self, other) -> 'Vector':
+        other = self.format_math_other(other)
+        return Vector(self.x + other[0], self.y + other[1])
+    def __radd__(self, other) -> 'Vector':
+        return self + other
+    
+    def __sub__(self, other) -> 'Vector':
+        other = self.format_math_other(other)
+        return Vector(self.x - other[0], self.y - other[1])
+    def __rsub__(self, other) -> 'Vector':        
+        other = self.format_math_other(other)
+        return self - other
+    
+    def __mul__(self, other) -> 'Vector':
+        other = self.format_math_other(other)
+
+        return Vector(self.x * other[0], self.y * other[1])
+    def __rmul__(self, other) -> 'Vector':
+        other = self.format_math_other(other)
+        return self * other
+    
+    def __truediv__(self, other) -> 'Vector':
+        other = self.format_math_other(other)
+        return Vector(self.x / other[0], self.y / other[1])
+    def __rdiv__(self, other) -> 'Vector':
+        other = self.format_math_other(other)
+        return self / other
+    
 
     @property
     def x(self):
@@ -83,8 +141,8 @@ class Vector():
         return np.abs(math.hypot(self.x, self.y))
     
     @property
-    def unit_vector(self) -> np.ndarray:
-        return self.value / self.length
+    def unit_vector(self) -> 'Vector':
+        return self / self.length
     
    
 class Line():
@@ -175,7 +233,7 @@ class Circle():
         self.pos = Point(x, y)
         self.radius = radius
         self.mass = mass
-        self.vel = np.array([vx, vy])
+        self.vel = Vector(vx, vy)
         self.forces = []
         self.rot = 0
     
@@ -221,14 +279,12 @@ class Circle():
     def movement_dir(self, timestep) -> Line:
         return Line(self.pos, self.next_pos(timestep))
 
-    def line_collision(self, line: Line, timestep: Number):
+    def line_collision(self, line: Line, timestep: Number, movement_dir: Line):
         # check if collision is possible
         # https://ericleong.me/research/circle-line/
-        
-        movement_dir = self.movement_dir(timestep)
 
         if movement_dir.length == 0:
-            return False, False, False
+            return (False, False, False, False)
         
         # cases where a collision could happen:
         could_collide = False
@@ -236,7 +292,7 @@ class Circle():
         p_a = line.intersection_point(movement_dir)
         if p_a == False:
 
-            return False, False, False
+            return (False, False, False, False)
 
         if (line.point_on_line(p_a) and movement_dir.point_on_line(p_a)):
             could_collide = True
@@ -259,7 +315,7 @@ class Circle():
             could_collide = True
 
         if could_collide == False:
-            return False, False, False
+            return (False, False, False, False)
 
         # the circle collided
         p_1 = line.closest_point(self.pos)
@@ -267,16 +323,17 @@ class Circle():
 
         p_c = line.closest_point(p_a)
         if line.point_on_line(p_c):
-            # line intersection        
-            p_3 = collision_point + (p_1 - p_c)
-            direction = self.pos - 2 * (p_3 - collision_point) - collision_point
-            direction_norm = Vector(direction[0], direction[1]).unit_vector
-            new_vel = direction_norm * movement_dir.length / timestep
-            
-            print(self.vel, new_vel)
+            # i use my own method but you can should be able to figure it otut
+            offset_x = p_a - p_1
+            offset_y = self.pos - p_1
+            point_on_new_dir = p_a + offset_x + offset_y
+            direction = point_on_new_dir - p_a
+            direction_norm = Vector(direction).unit_vector
+            new_vel = direction_norm * self.vel.length 
+
         else:
             # edge intersection
-            
+            print('edge')
             # calculate what endpoint the circle collided with 
             if p_c.distance(line.p1) < p_c.distance(line.p2):
                 endpoint = line.p1
@@ -286,14 +343,19 @@ class Circle():
             closest_point = movement_dir.closest_point(endpoint)
             distance = closest_point.distance(endpoint)  
             
-            move_back_distance = math.sqrt(self.radius**2 - distance**2)
+            move_back_distance = math.sqrt(np.abs(self.radius**2 - distance**2))
             collision_point: Point = movement_dir.move_from_point(collision_point, -move_back_distance)
             
             
-            movement_dir_norm = Line(endpoint, collision_point).unit_vector
+            movement_dir_norm = Vector(endpoint, collision_point).unit_vector
             new_vel = movement_dir_norm * movement_dir.vec.value
 
-        return True, new_vel, collision_point
+        # 
+        movement_dir_left_over_length = movement_dir.p2.distance(collision_point)
+        new_pos = collision_point + movement_dir_left_over_length * new_vel * timestep
+        left_over_dir = Line(collision_point, new_pos)
+        
+        return (True, new_vel, new_pos, left_over_dir)
     
                 
 
@@ -305,6 +367,7 @@ class PhysicsObject():
         
 class PhysicsEnvironment():
     def __init__(self, sizex, sizey, objects=[], lines=[]) -> None:
+        self.collision_efficiency = 80
         self.size : list = [sizex, sizey]
         self.objects :list[PhysicsObject, Circle, Line] = objects
         self.lines : list[Line] = lines
@@ -340,13 +403,18 @@ class PhysicsEnvironment():
                         
                         
             for line in self.lines:
-                collided, new_vel, pos = circle.line_collision(line, timestep)
-                if collided:
-                    circle.vel = new_vel
-                    # circle.pos = pos
+                movement_dir = circle.movement_dir(timestep)
+                collided, new_vel, pos, left_over_dir = circle.line_collision(line, timestep, movement_dir)
+                index = 0
+                while collided == True:
+                    circle.vel = new_vel * (self.collision_efficiency /  100)
+                    circle.pos = pos
+                    collided, new_vel, pos, left_over_dir = circle.line_collision(line, timestep, left_over_dir)
+                    index +=1
+                    if index == 2:
+                        print('hi')
 
-            
-            
+
         for obj in self.objects:
             obj.forces.append([0, -1])
             obj.apply_forces(timestep)
