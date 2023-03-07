@@ -239,6 +239,9 @@ class Circle():
         self.rot = 0
         self.vel_lines = []
     
+    def __repr__(self) -> str:
+        return f"Circle(pos: {self.pos}, vel: {self.vel})"
+    
     @property
     def x(self):
         return self.pos.x
@@ -275,13 +278,13 @@ class Circle():
     def apply_velocity(self, timestep):
         self.pos = self.next_pos(timestep)
     
-    def next_pos(self, timestep: Number) -> np.ndarray:
-        return self.pos + (self.vel * timestep) / self.mass
+    def next_pos(self, timestep: Number) -> Point:
+        return self.pos + (self.vel * timestep)
     
     def movement_dir(self, timestep) -> Line:
         return Line(self.pos, self.next_pos(timestep))
     
-    def line_collision(self, line: Line, timestep: Number, movement_dir: Line):
+    def line_collision(self, line: Line, movement_dir: Line):
         # check if collision is possible
         # https://ericleong.me/research/circle-line/
 
@@ -411,6 +414,41 @@ class PhysicsEnvironment():
                         circle2.forces.append(u2)
             
 
+            # fake 
+            is_colliding = True
+            i=0
+            sim_circle = copy.deepcopy(circle)
+            
+            left_over_dir = sim_circle.movement_dir(100)
+
+            while is_colliding and i < 5:
+                
+                intersection_lines = []
+
+                for line in self.lines:
+                    collided, new_vel, collision_point, left_over_dir_length  = sim_circle.line_collision(line, left_over_dir)
+                    if collided:
+                        intersection_lines.append({'line': line,'new_vel': new_vel, 'collision_point': collision_point, 'left_over_dir_length': left_over_dir_length})
+                
+                if len(intersection_lines) > 0:
+                    first_collision = sorted(intersection_lines,key=lambda x: x['left_over_dir_length'], reverse=True)[0]
+                    new_pos = first_collision['collision_point'] + first_collision['left_over_dir_length'] * first_collision['new_vel'].unit_vector
+
+                    # left_over_dir = Line(first_collision['collision_point'], left_over_dir.p2)
+                    circle.vel_lines.append([sim_circle.pos, first_collision['collision_point']])
+
+                    sim_circle.vel = first_collision['new_vel']
+                    sim_circle.pos = first_collision['collision_point']
+                    left_over_dir = sim_circle.movement_dir(10)
+
+                    i+=1
+                else:
+                    circle.vel_lines.append([sim_circle.pos, left_over_dir.p2])
+
+                    is_colliding = False
+
+
+
             # real 
             is_colliding = True
             i=0
@@ -421,7 +459,7 @@ class PhysicsEnvironment():
                 
                 intersection_lines = []
                 for line in self.lines:
-                    collided, new_vel, collision_point, left_over_dir_length  = sim_circle.line_collision(line, timestep, left_over_dir)
+                    collided, new_vel, collision_point, left_over_dir_length  = sim_circle.line_collision(line, left_over_dir)
                     if collided:
                         intersection_lines.append({'line': line,'new_vel': new_vel, 'collision_point': collision_point, 'left_over_dir_length': left_over_dir_length})
 
