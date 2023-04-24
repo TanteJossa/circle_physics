@@ -1,258 +1,55 @@
+"""
+    This is the main engine of the game.
+    It is responsible for the following:
+    - Collision detection
+    - Moving objects
+    
+    Classes
+    - Ball
+    - MovingObject
+    - PhyisicsEnvoironment
+    
+    Author: Merc4tor
+"""
+
 import numpy as np
 from numbers import Number
 from typing import Union, Any
 import math
 import copy
+from data_types import *
 
-class Point():
-    def __init__(self, x, y) -> None:
-        self.pos = np.array([float(x), float(y)])
-    
-    def __call__(self) -> np.ndarray:
-        return self.pos
-    
-    def __getitem__(self, index):
-        return self.pos[index]
-    def __setitem__(self, index, val):
-        self.pos[index] = val
-    def __len__(self):
-        return 2  
-    
-    def distance(self, p: 'Point'):
-        return np.abs(np.hypot(p.x - self.x, p.y - self.y))
-    
-    @property
-    def x(self):
-        return self.pos[0]
-    @property
-    def y(self):
-        return self.pos[1]
-    
-    @x.setter
-    def x(self,x):
-        self.pos[0] = x
-    @y.setter
-    def y(self, y):
-        self.pos[1] = y
-    
-
-    def __repr__(self) :
-        return f"Point({self.x}, {self.y})"
-    
-    def format_math_other(self, other) -> list:
-        if not hasattr(other,'__len__'):
-            other = [other, other]
-        return other   
-    def __add__(self, other) -> 'Point':
-        other = self.format_math_other(other)
-        return Point(self.x + other[0], self.y + other[1])
-    def __radd__(self, other) -> 'Point':
-        other = self.format_math_other(other)
-        return self + other
-    
-    def __sub__(self, other) -> 'Point':
-        other = self.format_math_other(other)
-        return Point(self.x - other[0], self.y - other[1])
-    def __rsub__(self, other) -> 'Point':
-        other = self.format_math_other(other)
-        return self - other
-    
-    def __mul__(self, other) -> 'Point':
-        other = self.format_math_other(other)
-        return Point(self.x * other[0], self.y * other[1])
-    def __rmul__(self, other) -> 'Point':
-        other = self.format_math_other(other)
-        return self * other
-    
-    def __truediv__(self, other) -> 'Point':
-        other = self.format_math_other(other)
-        return Point(self.x / other[0], self.y / other[0])
-    def __rdiv__(self, other) -> 'Point':
-        other = self.format_math_other(other)
-        return self / other
-
-class Vector():
-    def __init__(self, x: Number | Point, y: Number=0) -> None:
-        if type(x) == Point:     
-            y = x[1]
-            x = x[0]
-        if type(x) == Line and type(y) == Line:     
-            y = y[1] - x[1]
-            x = y[0] - x[0]
-        self.value = np.array([x, y])
-
-    def __repr__(self):
-        return f"Vector({self.x}, {self.y})"
-    def __getitem__(self, index):
-        return self.value[index]
-    def __setitem__(self, index, val):
-        self.value[index] = val
-    def __len__(self):
-        return 2    
-    def format_math_other(self, other) -> list:
-        if not hasattr(other,'__len__'):
-            other = [other, other]
-        return other    
-    def __add__(self, other) -> 'Vector':
-        other = self.format_math_other(other)
-        return Vector(self.x + other[0], self.y + other[1])
-    def __radd__(self, other) -> 'Vector':
-        return self + other
-    
-    def __sub__(self, other) -> 'Vector':
-        other = self.format_math_other(other)
-        return Vector(self.x - other[0], self.y - other[1])
-    def __rsub__(self, other) -> 'Vector':        
-        other = self.format_math_other(other)
-        return self - other
-    
-    def __mul__(self, other) -> 'Vector':
-        other = self.format_math_other(other)
-
-        return Vector(self.x * other[0], self.y * other[1])
-    def __rmul__(self, other) -> 'Vector':
-        other = self.format_math_other(other)
-        return self * other
-    
-    def __truediv__(self, other) -> 'Vector':
-        other = self.format_math_other(other)
-        return Vector(self.x / other[0], self.y / other[1])
-    def __rdiv__(self, other) -> 'Vector':
-        other = self.format_math_other(other)
-        return self / other
-    
-
-    @property
-    def x(self):
-        return self.value[0]
-    
-    @property
-    def y(self):
-        return self.value[1]
-    @x.setter
-    def x(self,x):
-        self.value[0] = x
-    
-    @y.setter
-    def y(self, y):
-        self.value[1] = y
-
-    @property
-    def length(self) -> Number:
-        return np.abs(math.hypot(self.x, self.y))
-    
-    @property
-    def unit_vector(self) -> 'Vector':
-        return self / self.length
-    
-   
-class Line():
-    def __init__(self, p1: Point, p2: Point) -> None:
-        self.type = 'line'
-        if type(p1) != Point:
-            p1 = Point(p1[0], p1[1])
-        if type(p2) != Point:
-            p2 = Point(p2[0], p2[1])
-        self.p1, self.p2 = p1, p2
-    def __repr__(self):
-        return f"Line({self.p1}, {self.p2})"
+class MovingObject():
+    """
+        MovingObject class
+        Properties:
+        - pos: Point
+        - vel: Vector
+        
+        Methods:
+            - move_forward
+    """
+    def __init__(self,x: Number=0, y: Number=0, vx: Number=0, vy: Number=0) -> None:
+        """
+            Constructor
+            - pos: Point
+            - vel: Vector
+        """
+        self.pos = Point(x, y)
+        self.vel = Vector(vx, vy)
+        pass
     
     @property
     def x(self) -> Number:
-        return self.p2.x - self.p1.x
-        
-    @property
-    def y(self) -> Number:
-        return self.p2.y - self.p1.y
-    
-    @property
-    def vec(self) -> Vector:
-        return Vector(self.x, self.y)
-        
-    @property
-    def length(self) -> Number:
-        return self.p1.distance(self.p2)
-    
-    @property
-    def unit_vector(self) -> np.ndarray:
-        return self.vec.value / self.length
-    
-    def closest_point(self, p: Point):
-        (x1, y1), (x2, y2), (x3, y3) = self.p1.pos, self.p2.pos, p.pos
-        dx, dy = x2-x1, y2-y1
-        det = dx*dx + dy*dy 
-        a = (dy*(y3-y1)+dx*(x3-x1))/det
-        return Point(x1+a*dx, y1+a*dy)
-    
-    def intersection_point(self, line: 'Line'):
-        (x1,y1), (x2,y2), (x3,y3), (x4,y4) = self.p1, self.p2, line.p1, line.p2
-        det = (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4)
-        if det != 0:
-            px= ( (x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4) ) / det
-            py= ( (x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4) ) / det
-        
-            return Point(px, py)
-        else:
-            return False
-
-    def intersection(self, line: 'Line'):
-        x1, y1 = self.p1
-        x2, y2 = self.p2
-        x3, y3 = line.p1
-        x4, y4 = line.p2
-
-        # Calculate the slopes and y-intercepts of the two lines
-        m1 = (y2 - y1) / (x2 - x1)
-        b1 = y1 - m1 * x1
-        m2 = (y4 - y3) / (x4 - x3)
-        b2 = y3 - m2 * x3
-
-        # Check if the lines are parallel
-        if m1 == m2:
-            return None
-
-        # Calculate the intersection point
-        x = (b2 - b1) / (m1 - m2)
-        y = m1 * x + b1
-
-        return x, y
-
-    
-    def point_on_line(self, point: Point) -> bool:
-        cumulative_dist_to_point = point.distance(self.p1) + point.distance(self.p2)
-
-        return math.isclose(cumulative_dist_to_point, self.length)
-    
-    def move_from_point(self, point: Point, length: Number) -> Point:
-        return point - self.unit_vector * length        
-
-
-
-class Circle():
-    def __init__(self, x: Number=0, y: Number=0, radius: Number=1, mass: Number=1, vx:Number=0, vy:Number=0, rot:Number=0) -> None:
-        self.type = 'circle'
-        self.pos = Point(x, y)
-        self.radius = radius
-        self.mass = mass
-        self.vel = Vector(vx, vy)
-        self.forces = []
-        self.rot = 0
-        self.vel_lines = []
-    
-    def __repr__(self) -> str:
-        return f"Circle(pos: {self.pos}, vel: {self.vel})"
-    
-    @property
-    def x(self):
         return self.pos.x
     @property
-    def y(self):
+    def y(self) -> Number:
         return self.pos.y
     @property
-    def vx(self):
+    def vx(self) -> Number:
         return self.vel[0]
     @property
-    def vy(self):
+    def vy(self) -> Number:
         return self.vel[1]
     
     @x.setter
@@ -267,221 +64,489 @@ class Circle():
     @vy.setter
     def vy(self, vy):
         self.vel[1] = vy
-
-    def apply_force(self, force: list[list[Number]],timestep=1):
-        self.vel = self.vel + np.array(force) / self.mass * timestep
-    
-    def apply_forces(self, timestep=1):
-        for force in self.forces:
-            self.apply_force(force, timestep)
-    
-    def apply_velocity(self, timestep):
-        self.pos = self.next_pos(timestep)
-    
-    def next_pos(self, timestep: Number) -> Point:
-        return self.pos + (self.vel * timestep)
-    
-    def movement_dir(self, timestep) -> Line:
-        return Line(self.pos, self.next_pos(timestep))
-    
-    def line_collision(self, line: Line, movement_dir: Line):
-        # check if collision is possible
-        # https://ericleong.me/research/circle-line/
-
-        if movement_dir.length == 0:
-            return (False, False, False, False)
         
-        # cases where a collision could happen:
-        could_collide = False
-        # The point of intersection between line and the movement vector of the circle. (a)
-        p_a = line.intersection_point(movement_dir)
-        if p_a == False:
+class Ball(MovingObject):
+    """ 
+        Ball class
+        Properties:
+        - pos: Point
+        - vel: Vector
+        - radius: Number
+        - id: String
+        
+        Methods:
+            - move_forward
+    """
+    
+    def __init__(self, x: Number=0, y: Number=0, vx: Number=0, vy: Number=0, radius: Number=1, id="-1") -> None:
+        """
+        Constructor
+        - x: x position
+        - y: y position
+        - vx: x velocity
+        - vy: y velocity
+        - radius: radius of the ball
+        - id: id of the ball
+        """
+        super().__init__(x, y, vx, vy)
+        self.radius = radius
+        self.vel_lines = []
+        self.id = id
+        pass
+    
+    def move_forward(self, distance: Number=0):
+        """
+            Move the ball forward
+            - distance: distance to move along velocity
+        """
+        self.pos += self.vel.unit_vector * distance
 
-            return (False, False, False, False)
+        pass
+    
+    def __repr__(self) -> str:
+        return f"Ball(id: {self.id}, pos: {self.pos}, vel: {self.vel.unit_vector})"
 
-        if (line.point_on_line(p_a) and movement_dir.point_on_line(p_a)):
-            could_collide = True
+class Collision():
+    """
+    Collision class
+    Properties:
+        - ball: Ball
+        - line: Line
+        - collision_point: Point
+        - touch_point: Point
+        - touch_point: Point
+        - type: str
+        - distance: Number
+        
+    Methods:
+        - is_valid
+        - calc_new_vel
+    """
+    
+    def __init__(self, ball: Ball, collision_point: Point, touch_point: Point, type: str='line', new_vel:Vector=None) -> None:
+        self.ball = ball
+        self.collision_point = collision_point
+        self.touch_point = touch_point
+        self.type = type
+        self.new_vel = new_vel
 
-        # The closest point on the line to the endpoint of the movement vector of the circle. (b)
-        p_b = line.closest_point(movement_dir.p2)
-        if p_b.distance(movement_dir.p2) < self.radius:
-            could_collide = True
+
+    def is_valid(self):
+        relative_collision_point = self.collision_point - self.ball.pos
+        # check if the collision point not in the opposite quadrant
+        return not (-1 * self.ball.vel).point_in_quadrant(relative_collision_point)
+    
+    def calc_new_vel(self):
+        """
+            Calculate the new velocity of the ball after the collision
+            - return: Vector of the new velocity of the ball after the collision.
+            - The new velocity is calculated by the following formula:
+            - if the collision is with a point:
+                - the new velocity is the point between the touch point and the collision point
+            - if the collision is with a line:
+                - look at the function
+        """
+        
+        
+        # the line between the touch point and the collision point flipped by 90 degrees
+        
+        if (self.type == 'point'):
+            new_vel = Vector(self.collision_point - self.touch_point)
+        if (self.type == 'line'):
+            collision_vec = Vector(self.touch_point.y - self.collision_point.y, self.touch_point.x - self.collision_point.x)
+            collision_line = Line(self.touch_point, self.touch_point + collision_vec)
+            
+            p_1 = collision_line.closest_point(self.ball.pos)
+            touch_to_p1 = Vector(self.touch_point.x - p_1.x, self.touch_point.y - p_1.y)
+
+            direction_point = self.ball.pos + 2 * touch_to_p1
+            
+            new_vel = Vector(direction_point.x - self.collision_point.x, direction_point.y - self.collision_point.y)
+        if (self.type == 'circle'):
+            # the calculation happens in the intersection
+            new_vel = self.new_vel
+            
+        return new_vel.unit_vector * self.ball.vel.length
+        
+        
+    def __repr__(self):
+        return f'Collision(ball={self.ball.id}, collision_point: {self.collision_point} touch_point: {self.touch_point}, distance: {self.distance}, type: {self.type})'
+    
+    @property
+    def distance(self):
+        return self.ball.pos.distance(self.collision_point)
+    @property
+    def time_left(self):
+        if (self.ball.vel.length == 0):
+            return 0
+        return self.distance / self.ball.vel.length
 
 
-        # The closest point on the movement vector to (x1, y1). (c)
-        p_c = movement_dir.closest_point(line.p1)
-        if p_c.distance(line.p1) < self.radius and movement_dir.point_on_line(p_c):
-            could_collide = True
+class BallLineInteraction():
+    """
+    Interaction between a line a a ball
+    Properties:
+        - ball: Ball
+        - line: Line
+        - collisions: Collision
+            - Sorted by the distance
+            - The first collision is the closest one
+    
+    Methods:
+        - calc_collisions
+    """
+    def __init__(self, ball: Ball, line: Line) -> None:
+        """
+        Constructor
+        - ball: Ball
+        - line: Line
+        
+        The constructor automatically calculates the collisions
+        """
+        self.ball = ball
+        self.line = line
+        self.collisions: list[Collision] = []
+        self.calc_collisions()
+
+    
+    def __repr__(self):
+        return 'Interaction(ball: '+self.ball.id+', line: '+str(id(Line))+', collisions: '+ str(self.collisions)+')'
+        
+    def calc_collisions(self):
+        """
+            Calculate the collisions between a line and a ball
+            The collision is calculated by the following formula:
+            - if the ball touches an edge point on his way:
+                - the collision point is the point on the movement line that has the distance of the radius to the edge point
+                - the touch point is the edge point
+            - if the ball touches a line on his way:
+                - the collision point is the point between the ball and the line
+                - the touch point is the line 
+        """        
+        
+        # a vector line
+        ball_movement_line = Line(self.ball.pos, self.ball.pos + self.ball.vel)
+                        
+        
+
+        # 1. the bal touches an edge point on his way
+        # check this first because the lines can be parralel, then there will be no intersection point
+        line_p1_closest = ball_movement_line.closest_point(self.line.p1)
+        line_p1_distance = line_p1_closest.distance(self.line.p1)
+        line_p2_closest = ball_movement_line.closest_point(self.line.p2)
+        line_p2_distance = line_p2_closest.distance(self.line.p2)
+
+        if (line_p1_distance < self.ball.radius or line_p2_distance < self.ball.radius):
+            self.collision_type = 'edge'
+            
+            if (line_p1_distance < self.ball.radius):
+                collision1_point_offset = math.sqrt(self.ball.radius**2 - line_p1_distance**2)
+                collision1_point = line_p1_closest - collision1_point_offset * self.ball.vel.unit_vector
+                # collision1_distance = collision1_point.distance(self.ball.pos)
+                self.collisions.append(Collision(ball=self.ball, collision_point=collision1_point, touch_point=self.line.p1, type='point'))
+
+            if (line_p2_distance < self.ball.radius):
+                collision2_point_offset = math.sqrt(self.ball.radius**2 - line_p2_distance**2)
+                collision2_point = line_p2_closest - collision2_point_offset * self.ball.vel.unit_vector
+                # collision2_distance = collision2_point.distance(self.ball.pos)
+                self.collisions.append(Collision(ball=self.ball, collision_point=collision2_point, touch_point=self.line.p2, type='point'))
 
 
-        # The closest point on the movement vector to the other endpoint. (d)
-        p_d = movement_dir.closest_point(line.p2)
-        if p_c.distance(line.p2) < self.radius and movement_dir.point_on_line(p_d):
-            could_collide = True
 
-        if could_collide == False:
-            return (False, False, False, False)
-
-        # the circle collided
-        p_1 = line.closest_point(self.pos)
-        collision_point = p_a - self.radius * (p_a.distance(self.pos) / p_1.distance(self.pos)) * movement_dir.unit_vector
-
-        p_c = line.closest_point(p_a)
-        if line.point_on_line(p_c):
-            # i use my own method but you can should be able to figure it otut
-            offset_x = p_a - p_1
-            offset_y = self.pos - p_1
-            point_on_new_dir = p_a + offset_x + offset_y
-            direction = point_on_new_dir - p_a
-            direction_norm = Vector(direction).unit_vector
-            new_vel = direction_norm * self.vel.length 
-
-        else:
-            # edge intersection
-            # calculate what endpoint the circle collided with 
-            if p_c.distance(line.p1) < p_c.distance(line.p2):
-                endpoint = line.p1
+        p_intersection: Point = self.line.intersection_point(ball_movement_line)
+        if p_intersection != False:
+            # both lines arent parralel, so a line collision van occur
+        
+            # 2. the center of the Ball crosses the line
+            ball_closest_on_line = self.line.closest_point(self.ball.pos)
+            ball_distance = ball_closest_on_line.distance(self.ball.pos)
+            
+            clostest_to_intersection_vec = Vector(p_intersection - ball_closest_on_line)
+            if (ball_distance == 0):
+                col_ratio = 1
             else:
-                endpoint = line.p2
+                col_ratio = self.ball.radius / ball_distance
             
-            closest_point = movement_dir.closest_point(endpoint)
-            distance = closest_point.distance(endpoint)  
-            
-            move_back_distance = math.sqrt(np.abs(self.radius**2 - distance**2))
-            collision_point: Point = movement_dir.move_from_point(collision_point, -move_back_distance)
-            
-            
-            movement_dir_norm = Vector(endpoint, collision_point).unit_vector
-            new_vel = movement_dir_norm * movement_dir.vec.value
+            touch_point = p_intersection - clostest_to_intersection_vec * col_ratio
 
-        # 
-        movement_dir_left_over_length = movement_dir.p2.distance(collision_point)
+            if (self.line.point_on_line(touch_point)):
+                # line collision
+                distance_touch_to_intersection = touch_point.distance(p_intersection)
+                distance_intersection_to_collision = math.sqrt(self.ball.radius**2 + distance_touch_to_intersection**2)
         
-        return (True, new_vel, collision_point, movement_dir_left_over_length)
+                collision_point = p_intersection - self.ball.vel.unit_vector * distance_intersection_to_collision
+
+                self.collisions.append(Collision(ball=self.ball, collision_point=collision_point, touch_point=touch_point, type='line'))
+
+        self.collisions = list(filter(lambda x: x.is_valid(), self.collisions))
+        if (len(self.collisions) > 0):
+            #because there is only 1 ball, it can be sorted on distance in stead of time left 
+            self.collisions.sort(key=lambda x: x.distance)
+           
+class BallBallInteraction():
+    """
+    Interaction between a Ball and a ball
+    Properties:
+        - ball: Ball
+        - ball: Ball
+        - collisions: Collision
+            - Sorted by the distance
+            - The first collision is the closest one
     
-                
-
-# can have multiple circles
-class PhysicsObject():
-    def __init__(self, circles: np.ndarray) -> None:
-        self.circles = circles
-            
+    Methods:
+        - calc_collisions
+    """
+    def __init__(self, ball: Ball, ball2: Ball) -> None:
+        """
+        Constructor
+        - ball: Ball
+        - ball2: Ball
         
+        The constructor automatically calculates the collisions
+        """
+        self.ball = ball
+        self.ball2 = ball2
+        self.collisions: list[Collision] = []
+        self.collision_point : Point= None
+        self.ball2_collision_point : Point= None
+        self.calc_collisions()
+
+    
+    def __repr__(self):
+        return 'Interaction(ball: '+self.ball.id+', ball2: '+self.ball2.id+', collisions: '+ str(self.collisions)+')'
+        
+    def calc_collisions(self):
+        """
+            Using my own calculations
+            https://www.desmos.com/calculator/lorrhfmnyr 
+        """        
+                        
+        pos_delta_x = self.ball2.pos.x - self.ball.pos.x
+        vel_delta_x = self.ball2.vel.x - self.ball.vel.x
+        pos_delta_y = self.ball2.pos.y - self.ball.pos.y
+        vel_delta_y = self.ball2.vel.y - self.ball.vel.y
+
+        total_radius = self.ball.radius + self.ball2.radius
+        
+        # distance from circle1 at time t to circle2 at time t
+        # the pos at time t = start_pos + t * vel
+        # solving for t (or check for no collision)
+        a = vel_delta_x**2 + vel_delta_y**2
+        b = 2 * (pos_delta_x * vel_delta_x + pos_delta_y * vel_delta_y)
+        c = pos_delta_x**2 + pos_delta_y**2 - total_radius**2
+        
+        if a == 0: 
+            # distance betweeen balls is 0
+            return
+        
+        determinant = b**2 - 4 * a * c
+        
+        if determinant < 0: 
+            return
+        
+        collision_time = (-b - math.sqrt(determinant)) / (2 * a) 
+        self.collision_point = self.ball.pos + self.ball.vel * collision_time
+        self.ball2_collision_point = self.ball2.pos + self.ball2.vel * collision_time
+        
+        touch_point = self.collision_point + Vector(self.ball2_collision_point - self.collision_point).unit_vector * self.ball.radius
+
+        ball_vel, ball2_vel = self.calc_new_vels()
+        
+        # line, because the other ball acts as a line
+        collision = Collision(ball=self.ball, collision_point=self.collision_point, touch_point=touch_point, type='circle', new_vel=ball_vel)
+        collision2 = Collision(ball=self.ball2, collision_point=self.ball2_collision_point, touch_point=touch_point, type='circle', new_vel=ball2_vel)
+        
+        if (collision.is_valid()):
+            self.collisions.append(collision)
+        if (collision2.is_valid()):
+            self.collisions.append(collision2)
+    
+    def calc_new_vels(self) -> tuple[Vector, Vector]:
+        """
+        Calculate the new velocity for the two balls
+        """
+        
+        # https://ericleong.me/research/circle-circle/
+        n = Vector(self.ball2_collision_point - self.collision_point).unit_vector
+        p = (n * self.ball.vel) - (n * self.ball2.vel)
+        # print((n * self.ball.vel.length))
+        ball1_new_vel = self.ball.vel - n * p
+        ball2_new_vel = self.ball2.vel + n * p
+        
+        return (ball1_new_vel, ball2_new_vel)
+        
+        
+            
 class PhysicsEnvironment():
-    def __init__(self, sizex, sizey, objects=[], lines=[]) -> None:
-        self.collision_efficiency = 80
+    """
+    The physics environment
+    Properties:
+        - size: list[int]
+        - objects: list[Ball]
+        - lines: list[Line]
+        - collisions: list[Collision]
+        - step_size: float
+    
+    Methods:
+        - calc_collisions
+        - get_first_collision
+        - run_tick
+    
+    """
+    
+    def __init__(self, sizex, sizey, objects=[], lines=[], step_size=0.005, use_gravity:bool=False, circle_collision: bool=False, collision_efficiency: Number= 1) -> None:
+        """
+        Constructor
+        - sizex: int
+        - sizey: int
+        - objects: list[Ball]
+        - lines: list[Line]
+        - step_size: float
+        
+        The constructor automatically calculates the collisions
+        """        
+        self.step_size = step_size
         self.size : list = [sizex, sizey]
-        self.objects :list[PhysicsObject, Circle, Line] = objects
+        self.objects :list[Ball] = objects
         self.lines : list[Line] = lines
         self.lines += [Line([0,0], [sizex, 0]), Line([sizex, 0], [sizex, sizey]), Line([sizex, sizey], [0, sizey]), Line([0, sizey], [0, 0]), ]
-        self.max_collision_per_tick = 6
+        self.collisions: list[Collision] = []
+        self.use_gravity = use_gravity
+        self.circle_collision = circle_collision
+        self.collision_efficiency = collision_efficiency
+        self.calc_collisions()
+    
+    def calc_collisions(self):
+        # # ball interactions
+        # if self.circle_collision:
+        #     # every pair exists once
+        #     collision_solver_dict = {}
+        #     for i in range(len(self.objects)):
+        #         collision_solver_dict[self.objects[i]] = self.objects[i+1::]
+                
+        #     for ball in collision_solver_dict:
+        #         for ball2 in collision_solver_dict[ball]:
+        #             interaction = BallBallInteraction(ball,ball2)
+        #             if (len(interaction.collisions) > 0):
+        #                 self.collisions += interaction.collisions
         
+        # get the collisions for each ball
+        for ball in self.objects:
+            collision = self.get_first_collision(ball)
+            if (collision):
+                self.collisions.append(collision)
+
+
+
+                                
+        # sort the collsions
+        if (len(self.collisions) != 0):            
+            self.collisions.sort(key=lambda x: x.time_left)
+    
+    def get_first_collision(self, ball: Ball) -> Collision:
+        collisions = []
+        
+        for ball2 in self.objects:
+            if (ball != ball2):
+                interaction = BallBallInteraction(ball,ball2)
+                if (len(interaction.collisions) > 0):
+                    collisions.append(interaction.collisions[0])
+        
+        # line interactions
+        for line in self.lines:
+            interaction = BallLineInteraction(ball,line)
+            if (len(interaction.collisions) > 0):
+                collisions.append(interaction.collisions[0])
+
+        if (len(collisions) != 0):    
+            #because there is only 1 ball, it can be sorted on distance in stead of time left 
+            collisions.sort(key=lambda x: x.distance)
+            ball.vel_lines = []
+            ball.vel_lines.append([ball.pos, collisions[0].collision_point] ) 
+            return collisions[0]
+        else: 
+            return False
+    
+    def fix_ball_clipping(self):
+        for ball in self.objects:
+            for ball2 in self.objects:
+                distance = ball.pos.distance(ball2.pos)
+                if (distance < (ball.radius + ball2.radius)):
+                    diff = distance - (ball.radius + ball2.radius)
+                    half_diff = diff / 2
+                    n = Vector(ball2.pos - ball.pos).unit_vector
+                    ball.pos += n * half_diff
+                    ball2.pos -= n * half_diff
+    
+    def fix_clipping(self):
+        for i in range(4):
+            self.fix_ball_clipping()
+        
+            for ball in self.objects:
+                for line in self.lines:
+                    closest_point = line.closest_point(ball.pos)
+                    distance = ball.pos.distance(closest_point)
+                    if(distance < ball.radius):
+                        diff = distance - ball.radius
+                        n = Vector(closest_point - ball.pos).unit_vector
+                        ball.pos += n * diff
+            
     def run_tick(self, timestep=1):
+        # self.collisions = []
 
-        for obj in self.objects:
-            obj.forces.append([0, -1])
-            obj.apply_forces(timestep)
-            obj.apply_velocity(timestep)
-            obj.forces = []
-            
-        for circle in self.objects:
-            circle.vel_lines = []
+        # clear the lines
+        # for ball in self.objects:
+        #     ball.vel_lines = []
         
-        collision_solver_dict = {}
-        for i in range(len(self.objects)):
-            collision_solver_dict[self.objects[i]] = self.objects[i+1::]
+        if (self.use_gravity):
+            for ball in self.objects:
+                ball.vel += (0, -1 * self.step_size)
             
-        # filter all the times that can not be in range of the obj
-        collisions_dict : dict[Circle: list[Circle]]  = {}
-        for circle in list(collision_solver_dict):
-            circle: Circle
-            collisions_dict[circle] = []
-            for circle2 in collision_solver_dict[circle]:
-                if circle != circle2:
-                    collided, norm, depth = self.circle_circle_collision(circle, circle2)
-                    
-                    if (collided):
-                        collisions_dict[circle].append({'obj': circle2, 'norm': norm, 'depth': depth})         
+        if (self.use_gravity or (self.circle_collision and len(active_collisions_old) > 0)):
+            self.collisions = []
+            self.calc_collisions()
+                
+        travelled_time = 0
+        collisions_per_ball = {}
+        collisions_per_ball = {ball: 0 for ball in self.objects}
+        # change the balls movements and positions
+        active_collisions : list[Collision] = list(filter(lambda col: col.time_left < self.step_size, self.collisions))
+        active_collisions_old = copy.deepcopy(active_collisions)
+        while len(active_collisions) > 0:
+            ball = active_collisions[0].ball
+            ball.vel = active_collisions[0].calc_new_vel() * self.collision_efficiency
+            ball.pos = active_collisions[0].collision_point
+            
+            # check if the new collision is more urgent
+            collision = self.get_first_collision(ball)
 
-                        # move them out of eachother
-                        circle.move(-norm * depth * 0.51)
-                        circle2.move(norm * depth * 0.5)
+            if (collision):
+                collisions_per_ball[collision.ball] += 1
+                if (collisions_per_ball[collision.ball] > self.step_size * 5000):
+                    ball.vel.y = 0
+                    ball.vel.x = 0
+                else:
+                    if (collision.time_left < self.step_size):
+                        # the collision takes place in the current time step
+                        active_collisions.append(collision)
+                        active_collisions.sort(key=lambda x: x.time_left)
+                    else:
+                        # the collision takes place outside this timestep
+                        self.collisions.append(collision)
+                        self.collisions.sort(key=lambda x: x.time_left)
                         
-                        u1, u2 = self.circle_collision(circle, circle2)
+            for ball in self.objects:
+                ball.move_forward(active_collisions[0].time_left * ball.vel.length)
+            travelled_time += active_collisions[0].time_left
+            if (active_collisions[0] in self.collisions):
+                self.collisions.remove(active_collisions[0])
+            if (active_collisions[0] in active_collisions):
+                active_collisions.remove(active_collisions[0])
 
-                        # add forces
-                        circle.forces.append(u1)
-                        circle2.forces.append(u2)
-            
+        if (travelled_time < self.step_size):
+            for ball in self.objects:
+                ball.move_forward((self.step_size - travelled_time) * ball.vel.length)
 
-            # fake 
-            is_colliding = True
-            i=0
-            sim_circle = copy.deepcopy(circle)
-            
-            left_over_dir = sim_circle.movement_dir(100)
-
-            while is_colliding and i < 5:
-                
-                intersection_lines = []
-
-                for line in self.lines:
-                    collided, new_vel, collision_point, left_over_dir_length  = sim_circle.line_collision(line, left_over_dir)
-                    if collided:
-                        intersection_lines.append({'line': line,'new_vel': new_vel, 'collision_point': collision_point, 'left_over_dir_length': left_over_dir_length})
-                
-                if len(intersection_lines) > 0:
-                    first_collision = sorted(intersection_lines,key=lambda x: x['left_over_dir_length'], reverse=True)[0]
-                    new_pos = first_collision['collision_point'] + first_collision['left_over_dir_length'] * first_collision['new_vel'].unit_vector
-
-                    # left_over_dir = Line(first_collision['collision_point'], left_over_dir.p2)
-                    circle.vel_lines.append([sim_circle.pos, first_collision['collision_point']])
-
-                    sim_circle.vel = first_collision['new_vel']
-                    sim_circle.pos = first_collision['collision_point']
-                    left_over_dir = sim_circle.movement_dir(10)
-
-                    i+=1
-                else:
-                    circle.vel_lines.append([sim_circle.pos, left_over_dir.p2])
-
-                    is_colliding = False
-
-
-
-            # real 
-            is_colliding = True
-            i=0
-            sim_circle = copy.deepcopy(circle)
-            
-            left_over_dir = sim_circle.movement_dir(timestep)
-            while is_colliding and i < 20:
-                
-                intersection_lines = []
-                for line in self.lines:
-                    collided, new_vel, collision_point, left_over_dir_length  = sim_circle.line_collision(line, left_over_dir)
-                    if collided:
-                        intersection_lines.append({'line': line,'new_vel': new_vel, 'collision_point': collision_point, 'left_over_dir_length': left_over_dir_length})
-
-                if len(intersection_lines) > 0:
-                    first_collision = sorted(intersection_lines,key=lambda x: x['left_over_dir_length'], reverse=True)[0]
-                    new_pos = first_collision['collision_point'] + first_collision['left_over_dir_length'] * first_collision['new_vel'].unit_vector * timestep
-
-                    left_over_dir = Line(first_collision['collision_point'], new_pos)
-                    
-                    sim_circle.vel = first_collision['new_vel']
-                    sim_circle.pos = first_collision['collision_point']
-                    i+=1
-                else:
-                    is_colliding = False
-            
-            circle.vel = sim_circle.vel
-            circle.pos = sim_circle.pos
-
-
-
-    
-    
-
+        self.fix_clipping()
 
         
